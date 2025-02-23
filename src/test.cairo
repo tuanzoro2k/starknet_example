@@ -8,7 +8,7 @@ pub trait IMemeCoin<TState> {
 }
  
 #[starknet::contract]
-pub mod MeMeCoin {
+pub mod MemeCoin {
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::storage::{Map, StorageMapReadAccess, StorageMapWriteAccess};
     use starknet::{ContractAddress, get_caller_address, get_contract_address,syscalls::deploy_syscall};
@@ -126,5 +126,39 @@ pub mod MeMeCoin {
             });
             return 0;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Import the interface and dispatcher to be able to interact with the contract.
+    use super::{MemeCoin, IMemeCoinDispatcher, IMemeCoinDispatcherTrait};
+    // Import the deploy syscall to be able to deploy the contract.
+    use starknet::syscalls::deploy_syscall;
+    use starknet::{get_contract_address, contract_address_const};
+ 
+    // Use starknet test utils to fake the contract_address
+    use starknet::testing::set_contract_address;
+ 
+    // Deploy the contract and return its dispatcher.
+    fn deploy() -> IMemeCoinDispatcher {
+        // Declare and deploy
+        let (contract_address, _) = deploy_syscall(
+            MemeCoin::TEST_CLASS_HASH.try_into().unwrap(),
+            0,
+            array![].span(),
+            false,
+        )
+            .unwrap();
+ 
+        // Return the dispatcher.
+        // The dispatcher allows to interact with the contract based on its interface.
+        IMemeCoinDispatcher { contract_address }
+    }
+ 
+    #[test_case]
+    fn test_deploy() {
+        let contract = deploy();
+        assert_eq!(contract.get_owner(), get_contract_address());
     }
 }
