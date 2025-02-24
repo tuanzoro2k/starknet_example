@@ -1,4 +1,5 @@
-pub mod token;
+use starknet::ContractAddress;
+
 #[starknet::interface]
 pub trait ILibAthene<T> {
     fn get_amount_out(ref self: T, amount_in: u256, reserve_in: u256, reserve_out: u256) -> u256;
@@ -7,7 +8,10 @@ pub trait ILibAthene<T> {
     fn convertCurrencyToToken(ref self: T, amount: u256, rate: u256) -> u256;
     fn convertTokenToCurrency(ref self: T, amount: u256, rate: u256) -> u256;
     fn getPoolTokenBalance(ref self: T, pool_address: ContractAddress) -> u256;
-    
+    fn safeApprove(ref self: T,token: ContractAddress, spender: ContractAddress,amount: u256);
+    fn transfer(ref self: T,token: ContractAddress, to: ContractAddress, amount: u256);
+    fn transferFrom(ref self: T,token: ContractAddress,from: ContractAddress, to: ContractAddress, amount: u256);
+    fn burn(ref self: T, token: ContractAddress, amount: u256);
 }
 mod Errors {
         pub const WRONG_INPUT_AMOUNT: felt252 = 'Input amount must be > 0';
@@ -19,8 +23,10 @@ mod Errors {
 // contract A
 #[starknet::contract]
 pub mod LibAthene {
+    use core::num::traits::Zero;
     use starknet::{get_contract_address, ContractAddress};
-    use token::IERC20Dispatcher;
+    use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use super::{IWETHDispatcher};
 
     #[storage]
     struct Storage {}
@@ -62,6 +68,24 @@ pub mod LibAthene {
             let balance = IERC20Dispatcher{ contract_address: pool_address }.balance_of(get_contract_address());
             return balance;
         }
+
+        fn safeApprove(ref self: ContractState, token: ContractAddress, spender: ContractAddress, amount: u256) {
+            IERC20Dispatcher{ contract_address: token}.approve(spender, 0);
+            IERC20Dispatcher{ contract_address: token}.approve(spender, amount);
+        }
+
+        fn transfer(ref self: ContractState, token: ContractAddress, to: ContractAddress, amount: u256){
+            IERC20Dispatcher{contract_address: token}.transfer(to, amount);
+        }
+
+        fn transferFrom(ref self: ContractState, token: ContractAddress, from: ContractAddress, to: ContractAddress, amount: u256){
+            IERC20Dispatcher{contract_address: token}.transfer_from(from, to, amount);
+        }
+
+        fn burn(ref self: ContractState, token: ContractAddress, amount: u256) {
+            IERC20Dispatcher{contract_address: token}.transfer(Zero::zero(),amount);
+        }
+
     }
 }
 
