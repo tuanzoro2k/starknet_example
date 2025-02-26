@@ -1,6 +1,11 @@
 use starknet::ContractAddress;
 
 #[starknet::interface]
+pub trait IUniswapPair<T>{
+    fn getReserves(ref self: T) -> ( felt252, felt252, felt252);
+    fn token0(ref self: T) -> felt252;
+}
+#[starknet::interface]
 pub trait ILibAthene<T> {
     fn get_amount_out(ref self: T, amount_in: u256, reserve_in: u256, reserve_out: u256) -> u256;
     fn get_amount_in(ref self: T, amount_out: u256, reserve_in: u256, reserve_out: u256) -> u256;
@@ -12,6 +17,7 @@ pub trait ILibAthene<T> {
     fn transfer(ref self: T,token: ContractAddress, to: ContractAddress, amount: u256);
     fn transferFrom(ref self: T,token: ContractAddress,from: ContractAddress, to: ContractAddress, amount: u256);
     fn burn(ref self: T, token: ContractAddress, amount: u256);
+    fn getReserves(ref self: T, token: ContractAddress, currency: felt252) -> ( felt252, felt252);
 }
 mod Errors {
         pub const WRONG_INPUT_AMOUNT: felt252 = 'Input amount must be > 0';
@@ -26,7 +32,8 @@ pub mod LibAthene {
     use core::num::traits::Zero;
     use starknet::{get_contract_address, ContractAddress};
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use super::{IWETHDispatcher};
+    use super::IUniswapPairDispatcher;
+    use super::IUniswapPairDispatcherTrait;
 
     #[storage]
     struct Storage {}
@@ -84,6 +91,15 @@ pub mod LibAthene {
 
         fn burn(ref self: ContractState, token: ContractAddress, amount: u256) {
             IERC20Dispatcher{contract_address: token}.transfer(Zero::zero(),amount);
+        }
+
+        fn getReserves(ref self: ContractState, token: ContractAddress, currency: felt252) -> ( felt252, felt252) {
+            let (reserve0, reserve1,_) =IUniswapPairDispatcher{contract_address: token}.getReserves();
+            if(currency == IUniswapPairDispatcher{contract_address: token}.token0()) {
+                return (reserve0,reserve1);
+            } else {
+                return (reserve1,reserve0);
+            }
         }
 
     }
